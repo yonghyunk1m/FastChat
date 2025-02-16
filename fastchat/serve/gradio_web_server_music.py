@@ -1,5 +1,5 @@
 """
-The gradio demo server for chatting with a single model.
+The gradio demo server for chatting with a single mode and text-to-music generation.
 """
 
 import argparse
@@ -1032,33 +1032,47 @@ def build_single_model_ui(models, add_promotion_links=False):
     return [state, model_selector]
 
 
+# 🎵 Music Arena
+def build_text_to_music_ui():
+    with gr.Blocks() as demo:
+        gr.Markdown("## 🎵 Text-to-Music Arena 🎵")
+
+        with gr.Row():
+            text_input = gr.Textbox(
+                label="Enter text prompt for music generation",
+                placeholder="Describe the music you want...",
+            )
+            generate_btn = gr.Button("Generate Music 🎶")
+
+        with gr.Row():
+            audio_output = gr.Audio(label="Generated Music", interactive=False)
+
+        generate_btn.click(fn=generate_music, inputs=[text_input], outputs=[audio_output])
+
+    return demo
+
+# 🎵 Music Arena Backend API Call
+def generate_music(text):
+    """Calls backend API to generate music"""
+    response = requests.post(
+        "http://localhost:8000/api/generate-music",
+        json={"text": text},
+        headers={"Content-Type": "application/json"},
+    )
+    result = response.json()
+    return result["audioUrl"]  # Return Generated Music URL
+
+
 def build_demo(models):
-    with gr.Blocks(
-        title="Chatbot Arena (formerly LMSYS): Free AI Chat to Compare & Test Best AI Chatbots",
-        theme=gr.themes.Default(),
-        css=block_css,
-    ) as demo:
+    with gr.Blocks(title="FastChat Arena & Text-to-Music Arena") as demo:
         url_params = gr.JSON(visible=False)
 
         state, model_selector = build_single_model_ui(models)
 
-        if args.model_list_mode not in ["once", "reload"]:
-            raise ValueError(f"Unknown model list mode: {args.model_list_mode}")
+        with gr.Tab("Music Arena"):
+            build_text_to_music_ui()
 
-        if args.show_terms_of_use:
-            load_js = get_window_url_params_with_tos_js
-        else:
-            load_js = get_window_url_params_js
-
-        demo.load(
-            load_demo,
-            [url_params],
-            [
-                state,
-                model_selector,
-            ],
-            js=load_js,
-        )
+        demo.load(load_demo, [url_params], [state, model_selector])
 
     return demo
 
